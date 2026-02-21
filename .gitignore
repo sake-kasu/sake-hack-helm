@@ -1,0 +1,24 @@
+# Kubeconfig files (contains sensitive credentials)
+kubeconfig
+*.kubeconfig
+
+# Helm
+.helmignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SOPS (decrypted secrets should not be committed)
+*.dec.yaml
+*.dec.yml
+
+# Local age private keys for SOPS
+.local/sops/age/

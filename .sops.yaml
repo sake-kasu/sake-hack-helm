@@ -1,0 +1,5 @@
+creation_rules:
+  - path_regex: backend/secrets/.*(\.enc|\.dec)?\.ya?ml$
+    encrypted_regex: "^(data|stringData)$"
+    age:
+      - age1lewhnmn5e7qf6wpm77eq55l272e6r7cxuq79mtwl24ad938vsarq8ta7ar
