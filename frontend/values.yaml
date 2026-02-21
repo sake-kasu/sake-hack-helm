@@ -24,7 +24,8 @@ securityContext:
   capabilities:
     drop:
     - ALL
-  readOnlyRootFilesystem: true
+  # frontendのentrypointが起動時に env-config.js を生成するため書き込みを許可
+  readOnlyRootFilesystem: false
 
 service:
   type: ClusterIP
