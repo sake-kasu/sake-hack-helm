@@ -149,6 +149,21 @@ curl -L -X POST \
 make backend-secrets-apply
 ```
 
+### 0.5 GHCRのimagePullSecret適用（private package運用時）
+
+```bash
+GHCR_USERNAME=<github-username> \
+GHCR_TOKEN=<github-pat-or-fine-grained-token> \
+GHCR_EMAIL=<email> \
+make ghcr-pull-secret-from-env
+
+make ghcr-pull-secret-encrypt
+make ghcr-pull-secret-apply
+```
+
+- 平文: `backend/secrets/ghcr-pull-secret.dec.yaml`（`.gitignore`対象）
+- 暗号化: `backend/secrets/ghcr-pull-secret.enc.yaml`
+
 ### 1. ArgoCD Applicationの適用
 
 ```bash

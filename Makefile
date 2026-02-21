@@ -3,8 +3,12 @@ ARGOCD_NAMESPACE ?= sake-hack-ns
 ARGOCD_CONTROL_PLANE_NAMESPACE ?= argocd
 ARGOCD_CHART ?= argocd/
 APP_NAMESPACE ?= sake-hack-ns
+GHCR_PULL_SECRET_NAME ?= ghcr-pull-secret
 KUBECONFIG_FILE ?= $(abspath ./kubeconfig)
 SOPS_AGE_KEY_FILE ?= $(abspath ./.local/sops/age/keys.txt)
+GHCR_PULL_SECRET_SAMPLE ?= backend/secrets/ghcr-pull-secret.dec.yaml.example
+GHCR_PULL_SECRET_DEC ?= backend/secrets/ghcr-pull-secret.dec.yaml
+GHCR_PULL_SECRET_ENC ?= backend/secrets/ghcr-pull-secret.enc.yaml
 BACKEND_SECRET_SAMPLE ?= backend/secrets/sake-hack-backend-secrets.dec.yaml.example
 BACKEND_SECRET_DEC ?= backend/secrets/sake-hack-backend-secrets.dec.yaml
 BACKEND_SECRET_ENC ?= backend/secrets/sake-hack-backend-secrets.enc.yaml
@@ -62,6 +66,20 @@ k9s: check-kubeconfig ## k9sをreadonlyで起動
 k9s-rw: check-kubeconfig ## k9sを通常モードで起動
 	@k9s --kubeconfig $(KUBECONFIG_FILE)
 
+ghcr-pull-secret-encrypt: check-sops ghcr-pull-secret-init ## GHCR imagePullSecretをSOPSで暗号化
+	@SOPS_AGE_KEY_FILE="$(SOPS_AGE_KEY_FILE)" sops --encrypt --output "$(GHCR_PULL_SECRET_ENC)" "$(GHCR_PULL_SECRET_DEC)"
+	@echo "🔐 $(GHCR_PULL_SECRET_ENC) を更新しました"
+
+ghcr-pull-secret-decrypt: check-sops check-sops-age-key ## GHCR imagePullSecretを復号して平文ファイルを生成
+	@test -f "$(GHCR_PULL_SECRET_ENC)" || (echo "❌ 暗号化ファイルが見つかりません: $(GHCR_PULL_SECRET_ENC)"; exit 1)
+	@SOPS_AGE_KEY_FILE="$(SOPS_AGE_KEY_FILE)" sops --decrypt --output "$(GHCR_PULL_SECRET_DEC)" "$(GHCR_PULL_SECRET_ENC)"
+	@echo "🔓 $(GHCR_PULL_SECRET_DEC) を更新しました"
+
+ghcr-pull-secret-apply: check-sops check-sops-age-key check-kubeconfig ## GHCR imagePullSecretを復号してクラスタへ適用
+	@test -f "$(GHCR_PULL_SECRET_ENC)" || (echo "❌ 暗号化ファイルが見つかりません: $(GHCR_PULL_SECRET_ENC)"; exit 1)
+	@SOPS_AGE_KEY_FILE="$(SOPS_AGE_KEY_FILE)" sops --decrypt "$(GHCR_PULL_SECRET_ENC)" | kubectl --kubeconfig "$(KUBECONFIG_FILE)" apply -f -
+	@echo "✅ $(APP_NAMESPACE) に $(GHCR_PULL_SECRET_NAME) を適用しました"
+
 backend-secrets-keygen: check-age ## SOPS用age鍵をリポジトリ内に生成
 	@mkdir -p "$(dir $(SOPS_AGE_KEY_FILE))"
 	@if [ -f "$(SOPS_AGE_KEY_FILE)" ]; then \
@@ -95,4 +113,4 @@ backend-secrets-apply: check-sops check-sops-age-key check-kubeconfig ## backend
 	@SOPS_AGE_KEY_FILE="$(SOPS_AGE_KEY_FILE)" sops --decrypt "$(BACKEND_SECRET_ENC)" | kubectl --kubeconfig "$(KUBECONFIG_FILE)" apply -f -
 	@echo "✅ backend Secretを適用しました"
 
-.PHONY: help setup check-kubeconfig check-sops check-age check-sops-age-key argocd-install argocd-upgrade argocd-uninstall status k9s k9s-rw backend-secrets-keygen backend-secrets-init backend-secrets-encrypt backend-secrets-decrypt backend-secrets-apply
+.PHONY: help setup check-kubeconfig check-sops check-age check-sops-age-key check-ghcr-creds argocd-install argocd-upgrade argocd-uninstall status k9s k9s-rw ghcr-pull-secret-init ghcr-pull-secret-from-env ghcr-pull-secret-encrypt ghcr-pull-secret-decrypt ghcr-pull-secret-apply backend-secrets-keygen backend-secrets-init backend-secrets-encrypt backend-secrets-decrypt backend-secrets-apply
