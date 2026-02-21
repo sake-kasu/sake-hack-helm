@@ -16,8 +16,9 @@ podAnnotations: {}
 
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
+  # nginxinc/nginx-unprivileged イメージ内の nginx ユーザー(UID/GID 101)に合わせる
+  runAsUser: 101
+  fsGroup: 101
 
 securityContext:
   allowPrivilegeEscalation: false
