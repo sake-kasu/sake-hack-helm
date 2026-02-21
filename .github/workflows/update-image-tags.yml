@@ -1,0 +1,139 @@
+name: Update Helm Image Tags
+
+on:
+  repository_dispatch:
+    types:
+      - backend-image-pushed
+      - frontend-image-pushed
+      - update-image-tags
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "backend / frontend / both"
+        required: false
+        default: "both"
+      tag:
+        description: "共通で使うタグ（service指定時に利用）"
+        required: false
+      backend_tag:
+        description: "backend専用タグ"
+        required: false
+      frontend_tag:
+        description: "frontend専用タグ"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-image-tags-main
+  cancel-in-progress: false
+
+jobs:
+  update-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve requested tags
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          event_file="${GITHUB_EVENT_PATH}"
+          event_name="${GITHUB_EVENT_NAME}"
+
+          service=""
+          common_tag=""
+          backend_tag=""
+          frontend_tag=""
+
+          if [[ "${event_name}" == "repository_dispatch" ]]; then
+            service="$(jq -r '.client_payload.service // empty' "${event_file}")"
+            common_tag="$(jq -r '.client_payload.tag // empty' "${event_file}")"
+            backend_tag="$(jq -r '.client_payload.backend_tag // empty' "${event_file}")"
+            frontend_tag="$(jq -r '.client_payload.frontend_tag // empty' "${event_file}")"
+          elif [[ "${event_name}" == "workflow_dispatch" ]]; then
+            service="$(jq -r '.inputs.service // empty' "${event_file}")"
+            common_tag="$(jq -r '.inputs.tag // empty' "${event_file}")"
+            backend_tag="$(jq -r '.inputs.backend_tag // empty' "${event_file}")"
+            frontend_tag="$(jq -r '.inputs.frontend_tag // empty' "${event_file}")"
+          fi
+
+          if [[ -z "${service}" ]]; then
+            service="both"
+          fi
+
+          case "${service}" in
+            backend)
+              if [[ -n "${common_tag}" && -z "${backend_tag}" ]]; then
+                backend_tag="${common_tag}"
+              fi
+              ;;
+            frontend)
+              if [[ -n "${common_tag}" && -z "${frontend_tag}" ]]; then
+                frontend_tag="${common_tag}"
+              fi
+              ;;
+            both)
+              if [[ -n "${common_tag}" ]]; then
+                if [[ -z "${backend_tag}" ]]; then
+                  backend_tag="${common_tag}"
+                fi
+                if [[ -z "${frontend_tag}" ]]; then
+                  frontend_tag="${common_tag}"
+                fi
+              fi
+              ;;
+            *)
+              echo "Invalid service: ${service} (backend/frontend/both)"
+              exit 1
+              ;;
+          esac
+
+          if [[ -z "${backend_tag}" && -z "${frontend_tag}" ]]; then
+            echo "No tags provided. Set tag, backend_tag, or frontend_tag."
+            exit 1
+          fi
+
+          echo "service=${service}" >> "${GITHUB_OUTPUT}"
+          echo "backend_tag=${backend_tag}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_tag=${frontend_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update values files
+        shell: bash
+        env:
+          BACKEND_TAG: ${{ steps.resolve.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ steps.resolve.outputs.frontend_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${BACKEND_TAG}" ]]; then
+            sed -i -E 's#^([[:space:]]*tag:[[:space:]]*").*(")$#\1'"${BACKEND_TAG}"'\2#' backend/values.yaml
+            echo "backend tag -> ${BACKEND_TAG}"
+          fi
+
+          if [[ -n "${FRONTEND_TAG}" ]]; then
+            sed -i -E 's#^([[:space:]]*tag:[[:space:]]*").*(")$#\1'"${FRONTEND_TAG}"'\2#' frontend/values.yaml
+            echo "frontend tag -> ${FRONTEND_TAG}"
+          fi
+
+      - name: Commit and push when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- backend/values.yaml frontend/values.yaml; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/values.yaml frontend/values.yaml
+          git commit -m "chore(ci): update image tags"
+          git push origin HEAD:main
