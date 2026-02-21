@@ -1,6 +1,8 @@
 ARGOCD_RELEASE ?= sake-hack-argocd
-ARGOCD_NAMESPACE ?= argocd
+ARGOCD_NAMESPACE ?= sake-hack-ns
+ARGOCD_CONTROL_PLANE_NAMESPACE ?= argocd
 ARGOCD_CHART ?= argocd/
+APP_NAMESPACE ?= sake-hack-ns
 KUBECONFIG_FILE ?= $(abspath ./kubeconfig)
 SOPS_AGE_KEY_FILE ?= $(abspath ./.local/sops/age/keys.txt)
 BACKEND_SECRET_SAMPLE ?= backend/secrets/sake-hack-backend-secrets.dec.yaml.example
@@ -26,10 +28,10 @@ check-sops-age-key:
 	@test -f "$(SOPS_AGE_KEY_FILE)" || (echo "❌ age秘密鍵が見つかりません: $(SOPS_AGE_KEY_FILE)"; echo "   make backend-secrets-keygen を実行してください"; exit 1)
 
 argocd-install: check-kubeconfig ## ArgoCD Applicationチャートをinstall
-	@helm install $(ARGOCD_RELEASE) $(ARGOCD_CHART) --namespace $(ARGOCD_NAMESPACE) --create-namespace --kubeconfig $(KUBECONFIG_FILE)
+	@helm install $(ARGOCD_RELEASE) $(ARGOCD_CHART) --namespace $(ARGOCD_NAMESPACE) --kubeconfig $(KUBECONFIG_FILE)
 
 argocd-upgrade: check-kubeconfig ## ArgoCD Applicationチャートをupgrade
-	@helm upgrade $(ARGOCD_RELEASE) $(ARGOCD_CHART) --namespace $(ARGOCD_NAMESPACE) --create-namespace --kubeconfig $(KUBECONFIG_FILE)
+	@helm upgrade $(ARGOCD_RELEASE) $(ARGOCD_CHART) --namespace $(ARGOCD_NAMESPACE) --kubeconfig $(KUBECONFIG_FILE)
 
 argocd-uninstall: check-kubeconfig ## ArgoCD Applicationチャートをuninstall（確認あり）
 	@printf "⚠️  $(ARGOCD_RELEASE) を $(ARGOCD_NAMESPACE) から削除します。実行しますか？ [y/N]: "; \
@@ -41,6 +43,18 @@ argocd-uninstall: check-kubeconfig ## ArgoCD Applicationチャートをuninstall
 		echo "キャンセルしました"; \
 		exit 1; \
 	fi
+
+status: check-kubeconfig ## ArgoCDとsake-hackの状態を確認
+	@echo "📊 状態確認を開始します"
+	@echo ""
+	@echo "🧭 ArgoCD Applications ($(ARGOCD_NAMESPACE))"
+	@kubectl --kubeconfig "$(KUBECONFIG_FILE)" -n "$(ARGOCD_NAMESPACE)" get applications 2>/dev/null || echo "⚠️  applications を参照できません（権限不足の可能性があります）"
+	@echo ""
+	@echo "🧩 ArgoCD Pods ($(ARGOCD_CONTROL_PLANE_NAMESPACE))"
+	@kubectl --kubeconfig "$(KUBECONFIG_FILE)" -n "$(ARGOCD_CONTROL_PLANE_NAMESPACE)" get pods 2>/dev/null || echo "⚠️  pods を参照できません（権限不足の可能性があります）"
+	@echo ""
+	@echo "🚀 App Resources ($(APP_NAMESPACE))"
+	@kubectl --kubeconfig "$(KUBECONFIG_FILE)" -n "$(APP_NAMESPACE)" get deploy,po,svc,ingress 2>/dev/null || echo "⚠️  app resources を参照できません（namespace/権限を確認してください）"
 
 k9s: check-kubeconfig ## k9sをreadonlyで起動
 	@k9s --kubeconfig $(KUBECONFIG_FILE) --readonly
@@ -81,4 +95,4 @@ backend-secrets-apply: check-sops check-sops-age-key check-kubeconfig ## backend
 	@SOPS_AGE_KEY_FILE="$(SOPS_AGE_KEY_FILE)" sops --decrypt "$(BACKEND_SECRET_ENC)" | kubectl --kubeconfig "$(KUBECONFIG_FILE)" apply -f -
 	@echo "✅ backend Secretを適用しました"
 
-.PHONY: help setup check-kubeconfig check-sops check-age check-sops-age-key argocd-install argocd-upgrade argocd-uninstall k9s k9s-rw backend-secrets-keygen backend-secrets-init backend-secrets-encrypt backend-secrets-decrypt backend-secrets-apply
+.PHONY: help setup check-kubeconfig check-sops check-age check-sops-age-key argocd-install argocd-upgrade argocd-uninstall status k9s k9s-rw backend-secrets-keygen backend-secrets-init backend-secrets-encrypt backend-secrets-decrypt backend-secrets-apply

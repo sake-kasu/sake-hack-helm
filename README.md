@@ -154,8 +154,7 @@ make backend-secrets-apply
 ```bash
 # ArgoCD ApplicationsをHelmで適用
 helm upgrade --install sake-hack-argocd argocd/ \
-  --namespace argocd \
-  --create-namespace
+  --namespace sake-hack-ns
 ```
 
 ### 2. 自動同期の動作
@@ -171,11 +170,11 @@ mainブランチへのpush時、ArgoCDが自動的に以下を実行します:
 
 ```bash
 # ArgoCD Applicationの状態確認
-kubectl get applications -n argocd
+kubectl get applications -n sake-hack-ns
 
 # 詳細確認
-kubectl get application sake-hack-backend -n argocd -o yaml
-kubectl get application sake-hack-frontend -n argocd -o yaml
+kubectl get application sake-hack-backend -n sake-hack-ns -o yaml
+kubectl get application sake-hack-frontend -n sake-hack-ns -o yaml
 
 # sake-hack-ns namespaceのリソース確認
 kubectl get all -n sake-hack-ns
@@ -241,7 +240,7 @@ helm upgrade sake-hack-frontend frontend/ --namespace sake-hack-ns
 ### ArgoCD Application削除
 
 ```bash
-helm uninstall sake-hack-argocd --namespace argocd
+helm uninstall sake-hack-argocd --namespace sake-hack-ns
 ```
 
 ### 手動削除

@@ -1,4 +1,4 @@
-argocdNamespace: argocd
+argocdNamespace: sake-hack-ns
 project: default
 
 source:
