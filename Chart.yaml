@@ -1,0 +1,11 @@
+apiVersion: v2
+name: sake-hack
+description: A Helm chart for sake-hack application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - sake-hack
+  - application
+maintainers:
+  - name: sake-hack team
