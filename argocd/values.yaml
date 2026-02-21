@@ -1,0 +1,30 @@
+argocdNamespace: argocd
+project: default
+
+source:
+  repoURL: https://github.com/sake-kasu/sake-hack-helm.git
+  targetRevision: main
+
+destination:
+  server: https://kubernetes.default.svc
+  namespace: sake-hack-ns
+
+syncPolicy:
+  automated:
+    prune: false
+    selfHeal: true
+    allowEmpty: false
+  syncOptions:
+    - CreateNamespace=true
+
+applications:
+  - name: sake-hack-backend
+    path: backend
+    valueFiles:
+      - values.yaml
+    enabled: true
+  - name: sake-hack-frontend
+    path: frontend
+    valueFiles:
+      - values.yaml
+    enabled: true

@@ -1,0 +1,33 @@
+{{- range .Values.applications }}
+{{- if (default true .enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.argocdNamespace }}
+spec:
+  project: {{ default $.Values.project .project }}
+  source:
+    repoURL: {{ default $.Values.source.repoURL .repoURL }}
+    targetRevision: {{ default $.Values.source.targetRevision .targetRevision }}
+    path: {{ .path }}
+    helm:
+      valueFiles:
+      {{- range (default (list "values.yaml") .valueFiles) }}
+        - {{ . }}
+      {{- end }}
+  destination:
+    server: {{ $.Values.destination.server }}
+    namespace: {{ $.Values.destination.namespace }}
+  syncPolicy:
+    automated:
+      prune: {{ $.Values.syncPolicy.automated.prune }}
+      selfHeal: {{ $.Values.syncPolicy.automated.selfHeal }}
+      allowEmpty: {{ $.Values.syncPolicy.automated.allowEmpty }}
+    syncOptions:
+    {{- range $.Values.syncPolicy.syncOptions }}
+      - {{ . }}
+    {{- end }}
+---
+{{- end }}
+{{- end }}
