@@ -1,0 +1,159 @@
+# sake-hackのデフォルト値
+replicaCount: 2
+
+image:
+  # パブリックリポジトリのイメージ参照
+  repository: ghcr.io/sake-kasu/sake-hack-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: api.sake-hack.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: sake-hack-backend-tls
+      hosts:
+        - api.sake-hack.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# アプリケーションのSecret
+secrets:
+  # trueの場合はこのチャートがSecretを作成
+  enabled: false
+  # enabled=false時は既存Secretを参照（SOPS + ageで別管理）
+  existingSecretName: "sake-hack-backend-secrets"
+  # enabled=true時に作成するSecret名（未指定なら <release>-<chart>-secrets）
+  name: ""
+  # 平文で扱うキー（KubernetesのstringDataへ展開）
+  stringData: {}
+    # 例:
+    # DB_PASSWORD: ""
+    # JWT_SECRET: ""
+    # STORAGE_SECRET_KEY: ""
+  # 後方互換: dataキーも利用可能（値は自動でbase64化）
+  data: {}
+    # 例:
+    # LEGACY_TOKEN: ""
+
+# 機密性の低い設定用のConfigMap
+configMap:
+  enabled: true
+  # 未指定なら <release>-<chart>-config
+  name: ""
+  data:
+    # Database (external)
+    DB_HOST: "192.168.0.140"
+    DB_PORT: "5454"
+    DB_NAME: "sake_hack_app"
+    DB_USER: "postgres"
+    DB_SSL_MODE: "disable"
+    # Valkey (external)
+    CACHE_HOST: "192.168.0.140"
+    CACHE_PORT: "6397"
+    CACHE_DATABASE: "0"
+    # RustFS (external via ingress host)
+    STORAGE_ENDPOINT: "https://storage.sake-hack.com"
+    STORAGE_REGION: "ap-northeast-1"
+    STORAGE_BUCKET_NAME: "sake-hack-bucket"
+    STORAGE_USE_PATH_STYLE: "true"
+
+# LivenessプローブとReadinessプローブ
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# cert-manager設定
+certManager:
+  enabled: true
+  issuer:
+    # テスト用には 'letsencrypt-staging' を使用
+    name: letsencrypt-prod
+    # オプション: ClusterIssuer または Issuer
+    kind: ClusterIssuer
+
+# 外部依存サービス公開（RustFS）
+externalServices:
+  rustfs:
+    enabled: true
+    # RustFSが動作している同一LAN内サーバー
+    endpointIP: "192.168.0.140"
+    endpointPort: 9191
+    service:
+      port: 9191
+    ingress:
+      enabled: true
+      className: "nginx"
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      host: "storage.sake-hack.com"
+      path: /
+      pathType: Prefix
+      tls:
+        enabled: true
+        secretName: "storage-sake-hack-com-tls"

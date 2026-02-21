@@ -1,0 +1,33 @@
+{{- if and .Values.externalServices.rustfs.enabled .Values.externalServices.rustfs.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sake-hack.fullname" . }}-rustfs
+  labels:
+    {{- include "sake-hack.labels" . | nindent 4 }}
+  {{- with .Values.externalServices.rustfs.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.externalServices.rustfs.ingress.className }}
+  ingressClassName: {{ .Values.externalServices.rustfs.ingress.className }}
+  {{- end }}
+  {{- if .Values.externalServices.rustfs.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.externalServices.rustfs.ingress.host | quote }}
+      secretName: {{ .Values.externalServices.rustfs.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.externalServices.rustfs.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.externalServices.rustfs.ingress.path }}
+            pathType: {{ .Values.externalServices.rustfs.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "sake-hack.fullname" . }}-rustfs-external
+                port:
+                  number: {{ .Values.externalServices.rustfs.service.port }}
+{{- end }}

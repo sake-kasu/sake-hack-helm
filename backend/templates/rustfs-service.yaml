@@ -1,0 +1,29 @@
+{{- if .Values.externalServices.rustfs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sake-hack.fullname" . }}-rustfs-external
+  labels:
+    {{- include "sake-hack.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.externalServices.rustfs.service.port }}
+      targetPort: {{ .Values.externalServices.rustfs.service.port }}
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ include "sake-hack.fullname" . }}-rustfs-external
+  labels:
+    {{- include "sake-hack.labels" . | nindent 4 }}
+subsets:
+  - addresses:
+      - ip: {{ .Values.externalServices.rustfs.endpointIP | quote }}
+    ports:
+      - name: http
+        port: {{ .Values.externalServices.rustfs.endpointPort }}
+        protocol: TCP
+{{- end }}
