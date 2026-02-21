@@ -1,0 +1,124 @@
+# sake-hackのデフォルト値
+replicaCount: 2
+
+image:
+  # パブリックリポジトリのイメージ参照
+  repository: ghcr.io/sake-kasu/sake-hack-frontend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: web.sake-hack.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: sake-hack-frontend-tls
+      hosts:
+        - web.sake-hack.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# アプリケーションのSecret
+secrets:
+  # trueの場合はこのチャートがSecretを作成
+  enabled: false
+  # enabled=false時は既存Secretを参照（必要な場合のみ指定）
+  existingSecretName: ""
+  # enabled=true時に作成するSecret名（未指定なら <release>-<chart>-secrets）
+  name: ""
+  # 平文で扱うキー（KubernetesのstringDataへ展開）
+  stringData: {}
+    # 例:
+    # OAUTH_CLIENT_SECRET: ""
+  # 後方互換: dataキーも利用可能（値は自動でbase64化）
+  data: {}
+    # 例:
+    # LEGACY_TOKEN: ""
+
+# 機密性の低い設定用のConfigMap
+configMap:
+  enabled: true
+  # 未指定なら <release>-<chart>-config
+  name: ""
+  data: {}
+    # ここに設定のキーバリューペアを追加
+    # 例:
+    # LOG_LEVEL: "info"
+    # APP_ENV: "production"
+
+# LivenessプローブとReadinessプローブ
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# cert-manager設定
+certManager:
+  enabled: true
+  issuer:
+    # テスト用には 'letsencrypt-staging' を使用
+    name: letsencrypt-prod
+    # オプション: ClusterIssuer または Issuer
+    kind: ClusterIssuer
