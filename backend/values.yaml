@@ -23,7 +23,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: true
 
 service:
@@ -93,6 +93,7 @@ configMap:
   # 未指定なら <release>-<chart>-config
   name: ""
   data:
+    SERVER_MODE: "release"
     # Database (external)
     DB_HOST: "192.168.0.140"
     DB_PORT: "5454"
@@ -108,6 +109,9 @@ configMap:
     STORAGE_REGION: "ap-northeast-1"
     STORAGE_BUCKET_NAME: "sake-hack-bucket"
     STORAGE_USE_PATH_STYLE: "true"
+    # Logging
+    LOG_LEVEL: "info"
+    LOG_FORMAT: "json"
 
 # LivenessプローブとReadinessプローブ
 livenessProbe:
