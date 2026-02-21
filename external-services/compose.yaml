@@ -1,0 +1,87 @@
+name: sake-hack
+
+services:
+  postgres:
+    image: postgis/postgis:18-3.6
+    container_name: sake-hack-postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ:-UTC}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "${BIND_IP:-0.0.0.0}:${POSTGRES_HOST_PORT:-5454}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - external_net
+
+  valkey:
+    image: valkey/valkey:9.0.2
+    container_name: sake-hack-valkey
+    restart: always
+    env_file:
+      - .env
+    command: >
+      sh -c "valkey-server
+      --appendonly yes
+      --requirepass \"$${VALKEY_PASSWORD}\""
+    volumes:
+      - valkey-data:/data
+    ports:
+      - "${BIND_IP:-0.0.0.0}:${VALKEY_HOST_PORT:-6397}:6379"
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'valkey-cli -a "$${VALKEY_PASSWORD}" ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - external_net
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.83
+    container_name: sake-hack-rustfs
+    restart: always
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ:-UTC}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_CONSOLE_ENABLED: "true"
+      RUSTFS_SERVER_URL: ${RUSTFS_SERVER_URL:-https://storage.sake-hack.com}
+      RUSTFS_ADDRESS: ":9191"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CORS_ALLOW_ORIGIN: ${RUSTFS_CORS_ALLOW_ORIGIN:-https://web.sake-hack.com}
+      RUSTFS_CORS_ALLOW_METHODS: ${RUSTFS_CORS_ALLOW_METHODS:-GET,PUT,HEAD,OPTIONS}
+      RUSTFS_CORS_ALLOW_HEADERS: ${RUSTFS_CORS_ALLOW_HEADERS:-*}
+      RUSTFS_CORS_EXPOSE_HEADERS: ${RUSTFS_CORS_EXPOSE_HEADERS:-ETag}
+      RUSTFS_CORS_ALLOW_CREDENTIALS: ${RUSTFS_CORS_ALLOW_CREDENTIALS:-false}
+    volumes:
+      - rustfs-data:/data
+    ports:
+      - "${BIND_IP:-0.0.0.0}:${RUSTFS_API_PORT:-9191}:9191"
+      - "${RUSTFS_CONSOLE_BIND_IP:-127.0.0.1}:${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    networks:
+      - external_net
+
+volumes:
+  postgres-data:
+  valkey-data:
+  rustfs-data:
+
+networks:
+  external_net:
+    name: sake_hack_external_net
+    driver: bridge
