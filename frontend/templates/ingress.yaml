@@ -33,9 +33,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "sake-hack.fullname" $ }}
+                name: {{ .serviceName | default (include "sake-hack.fullname" $) }}
                 port:
-                  number: {{ $.Values.service.port }}
+                  number: {{ .servicePort | default $.Values.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}

@@ -42,6 +42,11 @@ ingress:
   hosts:
     - host: web.sake-hack.com
       paths:
+        # /api 配下は backend Service へルーティング
+        - path: /api
+          pathType: Prefix
+          serviceName: sake-hack-backend
+          servicePort: 80
         - path: /
           pathType: Prefix
   tls:
