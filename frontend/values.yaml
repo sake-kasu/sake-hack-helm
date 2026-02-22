@@ -5,7 +5,7 @@ image:
   # パブリックリポジトリのイメージ参照
   repository: ghcr.io/sake-kasu/sake-hack-frontend
   pullPolicy: IfNotPresent
-  tag: "git-ed1325dfe84f590db9c81ee798285fe068493550"
+  tag: "git-a3d412cfe9e714b0bb2009be7885cc2ad8eab5f6"
 
 imagePullSecrets:
   - name: ghcr-pull-secret
