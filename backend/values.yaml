@@ -156,6 +156,10 @@ externalServices:
       annotations:
         cert-manager.io/issuer: "sake-hack-letsencrypt"
         nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        # Presigned URLでの画像アップロード時に413を避ける
+        nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+        # 大きめのアップロードをRustFSへストリーミングさせる
+        nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
       host: "storage.sake-hack.com"
       path: /
       pathType: Prefix
