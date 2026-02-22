@@ -5,6 +5,10 @@ kind: Application
 metadata:
   name: {{ .name }}
   namespace: {{ $.Values.argocdNamespace }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   project: {{ default $.Values.project .project }}
   source:

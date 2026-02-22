@@ -1,0 +1,22 @@
+{{- if .Values.issuer.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.issuer.name }}
+  labels:
+    app.kubernetes.io/name: sake-hack-shared
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  acme:
+    {{- if .Values.issuer.email }}
+    email: {{ .Values.issuer.email | quote }}
+    {{- end }}
+    server: {{ .Values.issuer.server | quote }}
+    privateKeySecretRef:
+      name: {{ .Values.issuer.privateKeySecretName }}
+    solvers:
+      - http01:
+          ingress:
+            class: {{ .Values.issuer.ingressClass | quote }}
+{{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sake-hack-shared
+description: Shared resources for sake-hack apps
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

@@ -37,7 +37,7 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/issuer: "sake-hack-letsencrypt"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
     - host: web.sake-hack.com
@@ -127,6 +127,6 @@ certManager:
   enabled: true
   issuer:
     # テスト用には 'letsencrypt-staging' を使用
-    name: letsencrypt-prod
+    name: sake-hack-letsencrypt
     # オプション: ClusterIssuer または Issuer
-    kind: ClusterIssuer
+    kind: Issuer

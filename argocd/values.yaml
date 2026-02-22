@@ -18,13 +18,24 @@ syncPolicy:
     - CreateNamespace=true
 
 applications:
+  - name: sake-hack-shared
+    path: shared
+    valueFiles:
+      - values.yaml
+    annotations:
+      argocd.argoproj.io/sync-wave: "-1"
+    enabled: true
   - name: sake-hack-backend
     path: backend
     valueFiles:
       - values.yaml
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
     enabled: true
   - name: sake-hack-frontend
     path: frontend
     valueFiles:
       - values.yaml
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
     enabled: true

@@ -1,0 +1,8 @@
+issuer:
+  enabled: true
+  # sake-hack namespace専用Issuer
+  name: sake-hack-letsencrypt
+  email: project.sake.hack@gmail.com
+  server: https://acme-v02.api.letsencrypt.org/directory
+  privateKeySecretName: sake-hack-letsencrypt-account-key
+  ingressClass: nginx
